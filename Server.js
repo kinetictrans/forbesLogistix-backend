@@ -7,6 +7,11 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST'],
+  }));
+
+app.use(cors({
   origin: 'https://forbes-logistics-frontend.vercel.app', // your frontend domain on vercel
   methods: ['GET', 'POST'],
 }));
