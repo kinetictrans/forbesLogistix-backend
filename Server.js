@@ -11,6 +11,10 @@ const auth = {
 dotenv.config();
 const app = express();
 app.use(cors());
+app.use(cors({
+    origin: 'https://forbes-logistics-backend-9i9g-8i60yom1j.vercel.app',
+    methods: ['GET', 'POST'],
+  }));
 
 //app.options('/api/send-pdf', cors());
 // ✅ CORS configuration — allow frontend origin
