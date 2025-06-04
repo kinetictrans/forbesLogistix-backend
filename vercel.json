@@ -1,0 +1,19 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "index.js",
+        "dest": "./",
+        "framework": "node.js",
+        "src": "server.js",
+        "dest": "./",
+        "framework": "node.js"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "index.js"
+      }
+    ]
+  }
