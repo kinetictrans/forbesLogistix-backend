@@ -5,10 +5,19 @@ exports.sendPDF = async (req, res) => {
   try {
     const formData = req.body;
 
-    // generate the PDF (in-memory)
+    if (!formData) {
+      return res.status(400).json({ message: 'No form data received.' });
+    }
+
+    // Generate the PDF in memory
     const pdfBuffer = await pdfGenerator(formData);
 
-    // send email
+    // Validate required environment variables
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(500).json({ message: 'Missing email credentials in environment variables.' });
+    }
+
+    // Configure transporter
     const transporter = nodemailer.createTransport({
       service: 'Gmail',
       auth: {
@@ -19,7 +28,7 @@ exports.sendPDF = async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: formData.personalEmail || 'moominaik@gmail.com',
+      to: formData.personalEmail || 'moominaik@gmail.com', // fallback for testing
       subject: 'Driver Application Submitted',
       text: 'Attached is the completed application form.',
       attachments: [
@@ -30,11 +39,12 @@ exports.sendPDF = async (req, res) => {
       ]
     };
 
+    // Send the email
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'PDF generated and email sent successfully.' });
 
+    return res.status(200).json({ message: 'PDF generated and email sent successfully.' });
   } catch (error) {
-    console.error('Error sending PDF:', error);
-    res.status(500).json({ message: 'Failed to generate or send PDF.' });
+    console.error('❌ Error sending PDF:', error);
+    return res.status(500).json({ message: 'Failed to generate or send PDF.', error: error.message });
   }
 };
