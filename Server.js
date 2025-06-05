@@ -11,11 +11,25 @@ app.use(cors({
     methods: ['GET', 'POST'],
   }));
 
-app.use(cors({
-  origin: 'https://forbes-logistics-frontend.vercel.app', // your frontend domain on vercel
-  methods: ['GET', 'POST'],
-}));
-
+  
+  const allowedOrigins = [
+    'https://forbes-logistics-frontend.vercel.app',
+    'https://forbes-logistics-frontend-git-main-abdulmoominnaiks-projects.vercel.app',
+    // add any other frontend URLs you want to allow
+  ];
+  
+  app.use(cors({
+    origin: function(origin, callback) {
+      // allow requests with no origin like Postman or curl
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST'],
+  }));
 app.use(express.json({ limit: '10mb' }));
 
 
