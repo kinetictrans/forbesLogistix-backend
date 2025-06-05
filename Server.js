@@ -18,7 +18,12 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 
+
 app.use('/api', pdfRoutes);
+
+app.get('/', (req, res) => {
+    res.send('Forbes Logistics Backend is Running ✅');
+  });
 
 // DO NOT call app.listen() on Vercel
 module.exports = app;
