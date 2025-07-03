@@ -28,6 +28,7 @@ app.use(cors({
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
+console.log("✅ CLIENT_RECEIVER_EMAIL from env:", process.env.CLIENT_RECEIVER_EMAIL);
 
 // Routes
 app.use('/api', pdfRoutes);
