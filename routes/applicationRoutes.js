@@ -10,9 +10,11 @@ const app = express();
 
 /* -------- CORS configuration -------- */
 const allowedOrigins = [
+  'https://www.forbeslogistix.com',                 // ← add this
+  'https://forbeslogistix.com',                     // ← add naked domain too (optional)
   'https://forbes-logistics-frontend.vercel.app',
   'https://forbes-logistics-frontend-git-main-abdulmoominnaiks-projects.vercel.app',
-  'http://localhost:3000',                     // for local testing (optional)
+  'http://localhost:3000',                          // dev
 ];
 
 app.use(
