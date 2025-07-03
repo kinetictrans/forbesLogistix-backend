@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
 
-module.exports = async function sendEmailWithPDF(pdfBuffer, recipientEmail) {
+module.exports = async function sendEmailWithPDF(pdfBuffer) {
   // Check for environment variables
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('Missing EMAIL_USER or EMAIL_PASS in environment variables.');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.CLIENT_RECEIVER_EMAIL) {
+    throw new Error('Missing EMAIL_USER, EMAIL_PASS, or CLIENT_RECEIVER_EMAIL in environment variables.');
   }
 
   try {
@@ -17,7 +17,7 @@ module.exports = async function sendEmailWithPDF(pdfBuffer, recipientEmail) {
 
     const info = await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: recipientEmail,
+      to: process.env.CLIENT_RECEIVER_EMAIL, // Can be one or more emails (comma-separated)
       subject: 'New Driver Application Submission',
       text: 'Attached is the latest driver application form.',
       attachments: [
@@ -28,7 +28,7 @@ module.exports = async function sendEmailWithPDF(pdfBuffer, recipientEmail) {
       ],
     });
 
-    console.log('✅ Email sent:', info.messageId);
+    console.log('✅ Email sent to:', process.env.CLIENT_RECEIVER_EMAIL);
   } catch (error) {
     console.error('❌ Error sending email:', error);
     throw error;
