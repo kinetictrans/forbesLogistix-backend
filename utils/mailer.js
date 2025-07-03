@@ -5,6 +5,7 @@ module.exports = async function sendEmailWithPDF(pdfBuffer) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.CLIENT_RECEIVER_EMAIL) {
     throw new Error('Missing EMAIL_USER, EMAIL_PASS, or CLIENT_RECEIVER_EMAIL in environment variables.');
   }
+  console.log("📨 Sending email to:", process.env.CLIENT_RECEIVER_EMAIL); // 👈 this line will help
 
   try {
     const transporter = nodemailer.createTransport({
