@@ -6,32 +6,35 @@ const pdfRoutes = require('./routes/pdfRoutes');
 dotenv.config();
 const app = express();
 
-/* ---------- CORS ---------- */
-const allowed = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);           // remove empty strings
+// ✅ ALLOWED ORIGINS
+const allowedOrigins = [
+  'https://www.forbeslogistix.com',
+  'https://forbes-logistics-frontend.vercel.app',
+  'http://localhost:3000',
+];
 
+// ✅ CORS middleware
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowed.includes(origin)) return cb(null, true);
-    return cb(new Error('Not allowed by CORS'));
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  credentials: true,
 }));
 
-app.options('*', cors());     // handle pre-flight automatically
-/* -------------------------- */
-
+// Body parser
 app.use(express.json({ limit: '10mb' }));
 
-/* Routes */
+// Routes
 app.use('/api', pdfRoutes);
 
-app.get('/', (_req, res) => {
+// Root
+app.get('/', (req, res) => {
   res.send('Forbes Logistics Backend is Running ✅');
 });
 
-/* Vercel: export the app (don’t call app.listen) */
 module.exports = app;
