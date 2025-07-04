@@ -28,9 +28,9 @@ exports.sendPDF = async (req, res) => {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: formData.personalEmail || 'moominaik@gmail.com', // fallback for testing
-      subject: 'Driver Application Submitted',
-      text: 'Attached is the completed application form.',
+      to: 'chase.forbes@forbeslogistix.com, recruiting@forbeslogistix.com', // <- two hardcoded recipients
+      subject: 'New Driver Application Submission',
+      text: 'Attached is the latest driver application form.',
       attachments: [
         {
           filename: 'Application.pdf',
@@ -42,6 +42,7 @@ exports.sendPDF = async (req, res) => {
     // Send the email
     await transporter.sendMail(mailOptions);
 
+    console.log('✅ Email sent to: dispatch@forbeslogistix.com, hr@forbeslogistix.com');
     return res.status(200).json({ message: 'PDF generated and email sent successfully.' });
   } catch (error) {
     console.error('❌ Error sending PDF:', error);
