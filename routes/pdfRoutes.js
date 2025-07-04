@@ -1,22 +1,17 @@
-const sendEmailWithPDF = require('../utils/sendEmailWithPDF');
+// routes/pdfRoutes.js
+const express = require('express');
+const router = express.Router();
+const { sendPDF } = require('../controllers/pdfController');
 
-exports.sendPDF = async (req, res) => {
-  try {
-    const { pdfData } = req.body;
+// Handle CORS pre-flight requests for this endpoint (optional but tidy)
+router.options('/send-pdf', (_req, res) => res.sendStatus(204));
 
-    if (!pdfData) {
-      return res.status(400).json({ message: 'PDF data is required' });
-    }
+/**
+ * POST /api/send-pdf
+ * Body: { pdfData: 'data:application/pdf;base64,......' }
+ * The controller converts the base64, generates the PDF buffer,
+ * and emails it to process.env.CLIENT_RECEIVER_EMAIL.
+ */
+router.post('/send-pdf', sendPDF);
 
-    const buffer = Buffer.from(pdfData.split(',')[1], 'base64');
-
-    console.log("✅ CLIENT_RECEIVER_EMAIL from env:", process.env.CLIENT_RECEIVER_EMAIL);
-
-    await sendEmailWithPDF(buffer, process.env.CLIENT_RECEIVER_EMAIL);
-
-    res.status(200).json({ message: 'PDF sent via email successfully' });
-  } catch (error) {
-    console.error('❌ Failed to send PDF:', error);
-    res.status(500).json({ message: 'Failed to send PDF' });
-  }
-};
+module.exports = router;
