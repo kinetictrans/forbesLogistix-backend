@@ -11,6 +11,8 @@ const allowedOrigins = [
   'https://www.forbeslogistix.com',
   'https://forbes-logistics-frontend.vercel.app',
   'http://localhost:3000',
+  'https://forbes-frontend.vercel.app',
+
 ];
 
 // ✅ CORS middleware
