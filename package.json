@@ -12,12 +12,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@azure/identity": "^4.4.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "isomorphic-fetch": "^3.0.0",
     "mongoose": "^8.15.1",
-    "nodemailer": "^7.0.3",
     "pdfkit": "^0.17.1"
   },
   "devDependencies": {
