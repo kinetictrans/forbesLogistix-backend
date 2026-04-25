@@ -55,7 +55,15 @@ function formatPhone(raw) {
 
 exports.sendLead = async (req, res) => {
     try {
-        const { name, phone, years, honeypot, turnstileToken } = req.body || {};
+        const {
+            name,
+            phone,
+            years,
+            applicantCert,
+            smsConsent,
+            honeypot,
+            turnstileToken,
+        } = req.body || {};
 
         // Bots fill every field. The hidden honeypot must stay empty.
         if (honeypot) {
@@ -65,6 +73,10 @@ exports.sendLead = async (req, res) => {
 
         if (!name || !phone || years === undefined || years === null) {
             return res.status(400).json({ message: 'Name, phone, and years of experience are required.' });
+        }
+
+        if (applicantCert !== true) {
+            return res.status(400).json({ message: 'Please confirm the applicant certification before submitting.' });
         }
 
         if (typeof name !== 'string' || typeof phone !== 'string') {
@@ -107,6 +119,9 @@ exports.sendLead = async (req, res) => {
             String(s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
         const prettyPhone = formatPhone(trimmedPhone);
+        const smsConsentBool = smsConsent === true;
+        const submittedAt = new Date().toISOString();
+        const submitterIp = req.ip || 'unknown';
 
         await sendViaGraph({
             to: LEAD_RECEIVER_EMAIL,
@@ -115,12 +130,25 @@ exports.sendLead = async (req, res) => {
                 `New driver lead submitted via the Quick Apply form on forbeslogistix.com.\n\n` +
                 `Name: ${trimmedName}\n` +
                 `Phone: ${prettyPhone}\n` +
-                `Years of verifiable OTR experience: ${yearsNum}\n`,
+                `Years of verifiable OTR experience: ${yearsNum}\n\n` +
+                `--- Consent record ---\n` +
+                `Applicant certification accepted: yes\n` +
+                `Recruiting calls/SMS consent: ${smsConsentBool ? 'yes' : 'no'}\n` +
+                `Submitted: ${submittedAt}\n` +
+                `IP: ${submitterIp}\n`,
             html:
                 `<p>New driver lead submitted via the Quick Apply form on forbeslogistix.com.</p>` +
                 `<p><strong>Name:</strong> ${safe(trimmedName)}</p>` +
                 `<p><strong>Phone:</strong> ${safe(prettyPhone)}</p>` +
-                `<p><strong>Years of verifiable OTR experience:</strong> ${yearsNum}</p>`,
+                `<p><strong>Years of verifiable OTR experience:</strong> ${yearsNum}</p>` +
+                `<hr/>` +
+                `<p><strong>Consent record</strong></p>` +
+                `<ul>` +
+                `<li>Applicant certification: <strong>yes</strong></li>` +
+                `<li>Recruiting calls/SMS consent: <strong>${smsConsentBool ? 'yes' : 'no'}</strong></li>` +
+                `<li>Submitted: ${safe(submittedAt)}</li>` +
+                `<li>IP: ${safe(submitterIp)}</li>` +
+                `</ul>`,
         });
 
         return res.status(200).json({ message: 'Lead received.' });
