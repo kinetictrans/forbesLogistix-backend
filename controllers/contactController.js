@@ -40,7 +40,7 @@ async function verifyTurnstile(token, remoteIp) {
 
 exports.sendContact = async (req, res) => {
     try {
-        const { name, email, message, turnstileToken } = req.body || {};
+        const { name, email, message, contactConsent, turnstileToken } = req.body || {};
 
         if (!name || !email || !message) {
             return res.status(400).json({ message: 'Name, email, and message are required.' });
@@ -85,15 +85,31 @@ exports.sendContact = async (req, res) => {
         const safe = (s) =>
             String(s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
+        const consentBool = contactConsent === true;
+        const submittedAt = new Date().toISOString();
+        const submitterIp = req.ip || 'unknown';
+
         await sendViaGraph({
             to: process.env.CONTACT_RECEIVER_EMAIL,
             replyTo: trimmedEmail,
             subject: `New contact form message from ${trimmedName}`,
-            text: `Name: ${trimmedName}\nEmail: ${trimmedEmail}\n\nMessage:\n${trimmedMessage}`,
+            text:
+                `Name: ${trimmedName}\nEmail: ${trimmedEmail}\n\nMessage:\n${trimmedMessage}\n\n` +
+                `--- Consent record ---\n` +
+                `Contact-response consent (calls/SMS for this inquiry): ${consentBool ? 'yes' : 'no'}\n` +
+                `Submitted: ${submittedAt}\n` +
+                `IP: ${submitterIp}\n`,
             html:
                 `<p><strong>Name:</strong> ${safe(trimmedName)}</p>` +
                 `<p><strong>Email:</strong> ${safe(trimmedEmail)}</p>` +
-                `<p><strong>Message:</strong><br/>${safe(trimmedMessage).replace(/\n/g, '<br/>')}</p>`,
+                `<p><strong>Message:</strong><br/>${safe(trimmedMessage).replace(/\n/g, '<br/>')}</p>` +
+                `<hr/>` +
+                `<p><strong>Consent record</strong></p>` +
+                `<ul>` +
+                `<li>Contact-response consent (calls/SMS for this inquiry): <strong>${consentBool ? 'yes' : 'no'}</strong></li>` +
+                `<li>Submitted: ${safe(submittedAt)}</li>` +
+                `<li>IP: ${safe(submitterIp)}</li>` +
+                `</ul>`,
         });
 
         return res.status(200).json({ message: 'Message sent successfully.' });

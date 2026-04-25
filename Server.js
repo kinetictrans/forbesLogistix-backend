@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const pdfRoutes = require('./routes/pdfRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const leadRoutes = require('./routes/leadRoutes');
 
 dotenv.config();
 
@@ -45,8 +46,19 @@ const contactLimiter = rateLimit({
 });
 app.use('/api/contact', contactLimiter);
 
+// Tighter rate limit on the Quick Apply lead form (smaller surface, more likely to be hammered).
+const leadLimiter = rateLimit({
+      windowMs: 10 * 60 * 1000,
+      max: 5,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { message: 'Too many requests. Please try again later.' },
+});
+app.use('/api/lead', leadLimiter);
+
 app.use('/api', pdfRoutes);
 app.use('/api', contactRoutes);
+app.use('/api', leadRoutes);
 
 app.get('/', (req, res) => {
       res.send('Forbes Logistics Backend is Running');

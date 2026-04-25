@@ -1,0 +1,159 @@
+const { sendViaGraph } = require('../utils/graphMailer');
+
+// Conservative caps. Quick Apply is a 3-field form; we don't need much room.
+const MAX_NAME = 100;
+const MAX_PHONE = 32;
+const MAX_YEARS = 3; // numeric value as string, e.g. "0" .. "60"
+
+// Lead recipient. Env var wins if set; otherwise the recruiting alias is used.
+const LEAD_RECEIVER_EMAIL = process.env.LEAD_RECEIVER_EMAIL || 'recruiting@forbeslogistix.com';
+
+// Optional Cloudflare Turnstile verification, shared with the contact form.
+const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET;
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+async function verifyTurnstile(token, remoteIp) {
+    if (!TURNSTILE_SECRET) {
+        return { ok: true, skipped: true };
+    }
+    if (!token || typeof token !== 'string') {
+        return { ok: false, reason: 'missing-token' };
+    }
+    try {
+        const params = new URLSearchParams();
+        params.append('secret', TURNSTILE_SECRET);
+        params.append('response', token);
+        if (remoteIp) params.append('remoteip', remoteIp);
+
+        const resp = await fetch(TURNSTILE_VERIFY_URL, {
+            method: 'POST',
+            body: params,
+        });
+        const data = await resp.json();
+        return { ok: data && data.success === true };
+    } catch (err) {
+        console.error('Turnstile verification error:', err.message);
+        return { ok: false, reason: 'verify-failed' };
+    }
+}
+
+// US-style phone digits-only check: 10 digits after stripping non-digits.
+// Accept 11-digit when it starts with 1.
+function isValidUsPhone(raw) {
+    const digits = String(raw).replace(/\D/g, '');
+    if (digits.length === 10) return true;
+    if (digits.length === 11 && digits.startsWith('1')) return true;
+    return false;
+}
+
+function formatPhone(raw) {
+    let digits = String(raw).replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+    if (digits.length !== 10) return raw;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+exports.sendLead = async (req, res) => {
+    try {
+        const {
+            name,
+            phone,
+            years,
+            applicantCert,
+            smsConsent,
+            honeypot,
+            turnstileToken,
+        } = req.body || {};
+
+        // Bots fill every field. The hidden honeypot must stay empty.
+        if (honeypot) {
+            // Pretend success so the bot doesn't retry.
+            return res.status(200).json({ message: 'OK' });
+        }
+
+        if (!name || !phone || years === undefined || years === null) {
+            return res.status(400).json({ message: 'Name, phone, and years of experience are required.' });
+        }
+
+        if (applicantCert !== true) {
+            return res.status(400).json({ message: 'Please confirm the applicant certification before submitting.' });
+        }
+
+        if (typeof name !== 'string' || typeof phone !== 'string') {
+            return res.status(400).json({ message: 'Invalid field types.' });
+        }
+
+        const trimmedName = name.trim();
+        const trimmedPhone = phone.trim();
+        const yearsStr = String(years).trim();
+
+        if (!trimmedName || !trimmedPhone || !yearsStr) {
+            return res.status(400).json({ message: 'Name, phone, and years of experience are required.' });
+        }
+
+        if (trimmedName.length > MAX_NAME) {
+            return res.status(400).json({ message: `Name must be ${MAX_NAME} characters or fewer.` });
+        }
+        if (trimmedPhone.length > MAX_PHONE) {
+            return res.status(400).json({ message: `Phone must be ${MAX_PHONE} characters or fewer.` });
+        }
+        if (yearsStr.length > MAX_YEARS) {
+            return res.status(400).json({ message: 'Years of experience is invalid.' });
+        }
+
+        if (!isValidUsPhone(trimmedPhone)) {
+            return res.status(400).json({ message: 'Please provide a valid US phone number.' });
+        }
+
+        const yearsNum = Number(yearsStr);
+        if (!Number.isFinite(yearsNum) || yearsNum < 0 || yearsNum > 60) {
+            return res.status(400).json({ message: 'Please provide a valid years-of-experience number.' });
+        }
+
+        const verify = await verifyTurnstile(turnstileToken, req.ip);
+        if (!verify.ok) {
+            return res.status(400).json({ message: 'Verification failed. Please try again.' });
+        }
+
+        const safe = (s) =>
+            String(s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+        const prettyPhone = formatPhone(trimmedPhone);
+        const smsConsentBool = smsConsent === true;
+        const submittedAt = new Date().toISOString();
+        const submitterIp = req.ip || 'unknown';
+
+        await sendViaGraph({
+            to: LEAD_RECEIVER_EMAIL,
+            subject: `New Driver Lead — ${trimmedName}`,
+            text:
+                `New driver lead submitted via the Quick Apply form on forbeslogistix.com.\n\n` +
+                `Name: ${trimmedName}\n` +
+                `Phone: ${prettyPhone}\n` +
+                `Years of verifiable OTR experience: ${yearsNum}\n\n` +
+                `--- Consent record ---\n` +
+                `Applicant certification accepted: yes\n` +
+                `Recruiting calls/SMS consent: ${smsConsentBool ? 'yes' : 'no'}\n` +
+                `Submitted: ${submittedAt}\n` +
+                `IP: ${submitterIp}\n`,
+            html:
+                `<p>New driver lead submitted via the Quick Apply form on forbeslogistix.com.</p>` +
+                `<p><strong>Name:</strong> ${safe(trimmedName)}</p>` +
+                `<p><strong>Phone:</strong> ${safe(prettyPhone)}</p>` +
+                `<p><strong>Years of verifiable OTR experience:</strong> ${yearsNum}</p>` +
+                `<hr/>` +
+                `<p><strong>Consent record</strong></p>` +
+                `<ul>` +
+                `<li>Applicant certification: <strong>yes</strong></li>` +
+                `<li>Recruiting calls/SMS consent: <strong>${smsConsentBool ? 'yes' : 'no'}</strong></li>` +
+                `<li>Submitted: ${safe(submittedAt)}</li>` +
+                `<li>IP: ${safe(submitterIp)}</li>` +
+                `</ul>`,
+        });
+
+        return res.status(200).json({ message: 'Lead received.' });
+    } catch (error) {
+        console.error('Error sending driver lead:', error);
+        return res.status(500).json({ message: 'Failed to submit lead.' });
+    }
+};
