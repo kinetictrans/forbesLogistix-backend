@@ -1,0 +1,86 @@
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const rateLimit = require('express-rate-limit');
+const pdfRoutes = require('./routes/pdfRoutes');
+const contactRoutes = require('./routes/contactRoutes');
+const leadRoutes = require('./routes/leadRoutes');
+
+dotenv.config();
+
+const app = express();
+
+// Vercel sits behind a proxy; trust it so rate limiter sees the real client IP.
+app.set('trust proxy', 1);
+
+const PROD_ORIGINS = [
+    'https://www.forbeslogistix.com',
+    'https://forbeslogistix.com',
+    'https://forbes-logistics-frontend.vercel.app',
+    'https://forbes-frontend.vercel.app',
+];
+
+const DEV_ORIGINS = ['http://localhost:3000'];
+
+// With credentials: true, allowing localhost in production creates a soft CSRF
+// surface from any locally-running attacker origin. Only allow it outside prod.
+const allowedOrigins =
+    process.env.NODE_ENV === 'production'
+        ? PROD_ORIGINS
+        : [...PROD_ORIGINS, ...DEV_ORIGINS];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true,
+}));
+
+// Contact and lead payloads are tiny; the driver-application PDF route is also
+// well under this cap because it's just form fields, not file uploads.
+app.use(express.json({ limit: '100kb' }));
+
+const tenMinuteWindow = 10 * 60 * 1000;
+
+const contactLimiter = rateLimit({
+    windowMs: tenMinuteWindow,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many requests. Please try again later.' },
+});
+app.use('/api/contact', contactLimiter);
+
+const leadLimiter = rateLimit({
+    windowMs: tenMinuteWindow,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many requests. Please try again later.' },
+});
+app.use('/api/lead', leadLimiter);
+
+// Driver application PDF endpoint — heavier work per request, so cap tighter.
+const pdfLimiter = rateLimit({
+    windowMs: tenMinuteWindow,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many requests. Please try again later.' },
+});
+app.use('/api/send-pdf', pdfLimiter);
+
+app.use('/api', pdfRoutes);
+app.use('/api', contactRoutes);
+app.use('/api', leadRoutes);
+
+app.get('/', (req, res) => {
+    res.send('Forbes Logistix Backend is Running');
+});
+
+module.exports = app;
