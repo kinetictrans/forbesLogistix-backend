@@ -16,19 +16,22 @@ app.set('trust proxy', 1);
 const PROD_ORIGINS = [
     'https://www.forbeslogistix.com',
     'https://forbeslogistix.com',
-    'https://forbes-logistics-frontend.vercel.app',
     'https://forbes-frontend.vercel.app',
 ];
 
 const DEV_ORIGINS = ['http://localhost:3000'];
 
-// With credentials: true, allowing localhost in production creates a soft CSRF
-// surface from any locally-running attacker origin. Only allow it outside prod.
+// Only allow localhost outside prod. We don't enable credentials, so the
+// localhost surface is small even if a stale production deploy was running,
+// but defense in depth.
 const allowedOrigins =
     process.env.NODE_ENV === 'production'
         ? PROD_ORIGINS
         : [...PROD_ORIGINS, ...DEV_ORIGINS];
 
+// `credentials: true` is intentionally NOT set. The frontend doesn't send
+// cookies (fetch() calls don't pass `credentials: 'include'`), so leaving
+// this off shrinks the CSRF surface. The allowlist above is still enforced.
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) {
@@ -38,7 +41,6 @@ app.use(cors({
         }
     },
     methods: ['GET', 'POST'],
-    credentials: true,
 }));
 
 // Contact and lead payloads are tiny; the driver-application PDF route is also
