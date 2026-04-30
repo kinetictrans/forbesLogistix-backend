@@ -1,3 +1,11 @@
+// SCAFFOLDING: this endpoint, the matching pdfRoutes, and utils/pdfGenerator
+// are not currently called by any frontend form. They're kept in place for
+// the planned full DOT driver application form (referenced on /apply: "Full
+// DOT application is sent after we talk"). When that form is built, it
+// posts here to receive a PDF-via-email. Until then this stack is dead
+// code intentionally — pdfkit stays in package.json so the route works the
+// moment the frontend wires up.
+
 const pdfGenerator = require('../utils/pdfGenerator');
 const { sendViaGraph } = require('../utils/graphMailer');
 

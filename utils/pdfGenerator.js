@@ -1,3 +1,7 @@
+// SCAFFOLDING: not currently called by any frontend form. See
+// controllers/pdfController.js for the full note. Reactivated when the
+// full DOT driver application form is built.
+
 const PDFDocument = require('pdfkit');
 
 module.exports = function generatePDF(data) {
